@@ -4,7 +4,6 @@ import { useState, useRef, useEffect } from 'react';
 import './ToneButton.css';
 import { Note, NoteLetter } from '../../types/Types';
 
-// Array of all notes with name and octave
 const notes = [
   { name: 'C', pitch: 'C' },
   { name: 'C#', pitch: 'C#' },
@@ -21,7 +20,6 @@ const notes = [
 ];
 
 export default function ToneButton() {
-  // const [counter, setCounter] = useState<number>(0);
   const synth = new Tone.Synth().toDestination();
   const polysynth = new Tone.PolySynth(Tone.Synth).toDestination();
 
@@ -38,12 +36,16 @@ export default function ToneButton() {
     synth.triggerAttackRelease(note, duration);
   }
 
+  // Need to work on naming conventions
+  // playChord currently returns notes in scale, not in chord
+  // will need to rename and refactor
   function playChord(
     root: string = 'C4',
     mode: string = 'major',
-    numNotes: number = 4
+    numNotes: number = 8
   ): void {
-    const notes = getChordNotes(root, mode).slice(0, numNotes);
+    const scale = getChordNotes(root, mode).slice(0, numNotes);
+    let notes = ['C4', 'E4', 'G4'];
 
     console.log(notes);
     const now = Tone.now();
@@ -56,16 +58,52 @@ export default function ToneButton() {
   }
 
   function arpeggiateChord(
-    root: string = 'C2',
+    root: string = 'C4',
     mode: string = 'major',
-    numNotes: number = 8
+    numNotes: number = 12,
+    noteDuration: string = '16n',
+    noteGap: number = 0.1
   ) {
-    const notes = getChordNotes(root, mode).slice(0, numNotes);
-    const now = Tone.now();
+    if (!isNoteValid(root)) {
+      console.log(`Invalid note ${root}`);
+      return;
+    }
+    if (!isDurationValid(noteDuration)) {
+      console.log(`Invalid duration ${noteDuration}`);
+      return;
+    }
 
+    let notes = getChordNotes(root, mode).slice(0, numNotes);
+    console.log('Base scale notes: ', notes);
+
+    let notesToAdd = numNotes - notes.length;
+    let octaveToAdd = 1;
+    while (notesToAdd > 0) {
+      let octave = Number(getOctave(root)) + octaveToAdd;
+      let newNotes = getChordNotes(
+        root.slice(0, root.length - 1) + String(octave),
+        mode
+      ).slice(0, notesToAdd);
+
+      console.log('Additional notes ', newNotes);
+      notes.push(...newNotes);
+
+      notesToAdd -= newNotes.length;
+      octaveToAdd += 1;
+    }
+
+    const now = Tone.now();
     notes.map((note, idx) => {
-      synth.triggerAttackRelease(note, '16n', now + idx * 0.3);
+      synth.triggerAttackRelease(note, noteDuration, now + idx * noteGap);
     });
+  }
+
+  function getNote(note) {
+    return note.slice(0, note.length - 1);
+  }
+
+  function getOctave(note) {
+    return note.slice(-1);
   }
 
   function getChordNotes(rootNote: string, mode: string) {
@@ -96,7 +134,7 @@ export default function ToneButton() {
       return [];
     }
 
-    const chordIntervals = modes[mode.toLowerCase()];
+    const chordIntervals = modes[mode];
     if (!chordIntervals) {
       console.error('Invalid mode:', mode);
       return [];
@@ -139,8 +177,6 @@ export default function ToneButton() {
 
   return (
     <div className="tone-button-container">
-      {/* <button onClick={() => setCounter(counter + 1)}>Increment</button>
-      <button onClick={() => setCounter(counter - 1)}>Decrement</button> */}
       <button onClick={() => playNote()}>Play note</button>
       <button onClick={() => playChord()}>Play chord</button>
       <button onClick={() => arpeggiateChord()}>Arpeggio</button>
